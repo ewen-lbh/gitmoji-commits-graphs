@@ -15,7 +15,7 @@ except ImportError:
   sys.exit()
 
 try:
-  from termcolor import cprint
+  from termcolor import cprint, colored
   from yaspin import yaspin
   import emoji
   import matplotlib as mpl
@@ -56,6 +56,7 @@ def main():
   labels, counts = aggregate(emojis)
   make_plot(labels, counts, args.output_file)
   open_plot(args.output_file)
+  success(f"Graph saved at {colored(os.path.relpath(args.output_file, cwd), attrs=['bold'])}")
   os.chdir(cwd)
 
 #
@@ -112,13 +113,6 @@ def aggregate(emojis: List[str]) -> Tuple[List[str], List[int]]:
   grouped = {}
   for emoji in emojis:
     grouped = increment_or_set(grouped, emoji)
-  
-  for emoji, count in grouped.items():
-    if count <= others_threshold:
-      grouped = increment_or_set(grouped, emoji, count)
-      grouped[emoji] = None
-
-  grouped = { k:v for k, v in grouped.items() if v is not None }
   
   flat = list(grouped.items())
   sorted_flat = sorted(flat, key=lambda d: d[1])
@@ -200,6 +194,16 @@ def find(pred, iterable):
     if pred(element):
       return element
   return None
+
+#
+# Topological sorting. Layer: 4
+#
+
+def debug(msg):
+  cprint(msg, attrs=['dark'])
+  
+def success(msg):
+  print(colored('√', 'green') + ' ' + msg)
 
 #
 # Topological sorting. Layer: 0
