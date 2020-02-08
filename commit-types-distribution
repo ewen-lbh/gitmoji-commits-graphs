@@ -185,10 +185,6 @@ def load_fonts():
   fonts = font_manager.createFontList(files)
   font_manager.fontManager.ttflist.extend(fonts)
 
-def random_color() -> str:
-  random_hex_chars = [ random.choice('0123456789ABCDEF') for j in range(6) ]
-  return "#" + ''.join(random_hex_chars)
-
 def shell(command, show=False):
   result = run(command, shell=True, capture_output=not show)
   result.check_returncode()
