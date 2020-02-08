@@ -133,7 +133,7 @@ def make_plot(labels: List[str], counts: List[int], save_as: str):
   # Get the  x_pos for each bar
   x_pos = np.arange(len(labels))
   # Init plot
-  fig, ax = plt.subplots(figsize=(10, 5))
+  fig, ax = plt.subplots(figsize=(10, .5 * len(labels)))
   # Set the plot's title
   plt.title(f"Commit types distribution for {os.path.basename(os.getcwd())}")
   # Draw the bars
