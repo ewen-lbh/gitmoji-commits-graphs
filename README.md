@@ -11,3 +11,35 @@ $ commit-types-distribution -o example.png
 
 ![](./example.png)
 
+## Some usage `--help`
+```
+usage: commit-types-distribution [-h] [--show-non-gitmoji] [--emoji-labels]
+                                 [-o PATH] [-f] [-m PATH|URL]
+                                 [--save-gitmoji-map]
+                                 [PATH]
+
+Generate a bar plot showing distribution of commit types. Intended for use on
+repositories following the gitmoji standard.
+
+positional arguments:
+  PATH                  The path to the repository to analyze. Default to the
+                        current working directory.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --show-non-gitmoji, -G
+                        Show a "N/A" bar counting commits that don't start
+                        with an emoji.
+  --emoji-labels, -e    Use emojis for labels (Broken right now)
+  -o PATH, --output-file PATH
+                        Graph output filepath.
+  -f, --open-file       Open the file
+  -m PATH|URL, --gitmoji-map PATH|URL
+                        The file to use as the gitmoji map. Must be a JSON
+                        object using the same schema as the default map.
+                        Default: https://raw.githubusercontent.com/carloscuest
+                        a/gitmoji/master/src/data/gitmojis.json
+  --save-gitmoji-map    Prints the gitmoji map JSON file from the official
+                        gitmoji repository and exit. Use this to save a local
+                        version
+```
