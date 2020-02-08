@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+# TODO: Cache the map, and add a --no-cache flag
 
 import sys
 try:
@@ -8,6 +9,7 @@ try:
   import random
   import textwrap
   import requests
+  import json
   from typing import List, Tuple, Union, Optional
   from subprocess import run, CalledProcessError
 except ImportError:
@@ -41,6 +43,9 @@ except ImportError:
 def main():
   cwd = os.getcwd()
   args = parse_args()
+  if args.save_gitmoji_map:
+    print(requests.get(DEFAULT_GITMOJI_MAP).content.decode('utf8'))
+    sys.exit()
   if args.path:
     os.chdir(args.path)
   if not in_git_repo():
@@ -51,7 +56,7 @@ def main():
     commits,
     ignore_nonemoji=not args.show_non_gitmoji,
     use_emoji_names=args.emoji_labels,
-    emoji_map=get_gitmoji_map()
+    emoji_map=get_gitmoji_map(args.gitmoji_map)
   )
   labels, counts = aggregate(emojis)
   make_plot(labels, counts, args.output_file)
@@ -64,7 +69,6 @@ def main():
 # Topological sorting. Layer: 2
 #
 
-@yaspin(text='Parsing arguments...', color='cyan')
 def parse_args():
   parser = argparse.ArgumentParser(description="""Generate a bar plot showing distribution of commit types.
 Intended for use on repositories following the gitmoji standard.""")
@@ -73,6 +77,8 @@ Intended for use on repositories following the gitmoji standard.""")
   parser.add_argument('--emoji-labels', '-e', action='store_false', help='Use emojis for labels (Broken right now)')
   parser.add_argument('-o', '--output-file', default='graph.png', metavar='PATH', help='Graph output filepath.')
   parser.add_argument('-f', '--open-file', action='store_true', help='Open the file')
+  parser.add_argument('-m', '--gitmoji-map', default=DEFAULT_GITMOJI_MAP, metavar='PATH|URL', help="The file to use as the gitmoji map. Must be a JSON object using the same schema as the default map.\nDefault: https://raw.githubusercontent.com/carloscuesta/gitmoji/master/src/data/gitmojis.json")
+  parser.add_argument('--save-gitmoji-map', action='store_true', help="Prints the gitmoji map JSON file from the official gitmoji repository and exit. Use this to save a local version")
   return parser.parse_args()
   
 @yaspin(text='Looking for a git repository...', color='cyan')
@@ -105,10 +111,14 @@ def get_emojis(
   return emojis
 
 @yaspin(text='Getting the gitmoji emojis map...', color='cyan')
-def get_gitmoji_map() -> List[dict]:
-  return requests.get(
-    'https://raw.githubusercontent.com/carloscuesta/gitmoji/master/src/data/gitmojis.json'
-  ).json()['gitmojis']
+def get_gitmoji_map(url_or_path) -> List[dict]:
+  if url_or_path.startswith(('http://', 'https://')):
+    return requests.get(url_or_path).json()['gitmojis']
+  elif os.path.isfile(url_or_path):
+    return json.loads(open(url_or_path, 'r').read())['gitmojis']
+  else:
+    error(f"Couldn't find the gitmoji map file. Falling back to the default.", before='\n')
+    return get_gitmoji_map(DEFAULT_GITMOJI_MAP)
 
 @yaspin(text='Aggregating the data...', color='cyan')
 def aggregate(emojis: List[str]) -> Tuple[List[str], List[int]]:
@@ -203,8 +213,13 @@ def find(pred, iterable):
 def debug(msg):
   cprint(msg, attrs=['dark'])
   
-def success(msg):
-  print(colored('√', 'green') + ' ' + msg)
+def success(msg, before=''):
+  print(before + colored('√', 'green') + ' ' + msg)
+  
+def error(msg, before=''):
+  print(before + colored('×', 'red') + ' ' + msg)
+
+DEFAULT_GITMOJI_MAP = 'https://raw.githubusercontent.com/carloscuesta/gitmoji/master/src/data/gitmojis.json'
 
 #
 # Topological sorting. Layer: 0
