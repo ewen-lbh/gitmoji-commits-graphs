@@ -1,0 +1,209 @@
+#!/usr/bin/python3
+
+import sys
+try:
+  import os
+  import re
+  import argparse
+  import random
+  import textwrap
+  import requests
+  from typing import List, Tuple, Union, Optional
+  from subprocess import run, CalledProcessError
+except ImportError:
+  print('Please use a more recent version of python')
+  sys.exit()
+
+try:
+  from termcolor import cprint
+  from yaspin import yaspin
+  import emoji
+  import matplotlib as mpl
+  from matplotlib import font_manager
+  import matplotlib as mpl
+  import matplotlib.pyplot as plt
+  import numpy as np
+except ImportError:
+  print('Some dependencies are not installed.')
+  print('Trying to install them...')
+  print('$ pip install -r requirements.txt')
+  try:
+    run('pip install -r requirements.txt', shell=True).check_returncode()
+  except CalledProcessError:
+    print("Couldn't install dependencies.")
+  else:
+    print("Dependencies installed. Please re-run your command.")
+  sys.exit()
+#
+# Topological sorting. Layer: 1
+#
+
+def main():
+  cwd = os.getcwd()
+  args = parse_args()
+  if args.path:
+    os.chdir(args.path)
+  if not in_git_repo():
+    cprint("Couldn't find a repository in the current directory.", 'red')
+    sys.exit()
+  commits = load_commits()
+  emojis = get_emojis(
+    commits,
+    ignore_nonemoji=not args.show_non_gitmoji,
+    use_emoji_names=args.emoji_labels,
+    emoji_map=get_gitmoji_map()
+  )
+  labels, counts = aggregate(emojis)
+  make_plot(labels, counts, args.output_file)
+  open_plot(args.output_file)
+  os.chdir(cwd)
+
+#
+# Topological sorting. Layer: 2
+#
+
+@yaspin(text='Parsing arguments...', color='cyan')
+def parse_args():
+  parser = argparse.ArgumentParser(description="""Generate a bar plot showing distribution of commit types.
+Intended for use on repositories following the gitmoji standard.""")
+  parser.add_argument('path', metavar='PATH', type=str, nargs='?', help='The path to the repository to analyze.')
+  parser.add_argument('--show-non-gitmoji', '-G', action='store_true', help='Show a "N/A" bar counting commits that don\'t start with an emoji.')
+  parser.add_argument('--emoji-labels', '-e', action='store_false', help='Use emojis for labels (Broken right now)')
+  parser.add_argument('-o', '--output-file', default='graph.png', metavar='PATH', help='Graph output filepath.')
+  return parser.parse_args()
+  
+@yaspin(text='Looking for a git repository...', color='cyan')
+def in_git_repo() -> bool:
+  try:
+    shell('git status')
+    return True
+  except CalledProcessError:
+    return False
+
+
+@yaspin(text='Loading commits...', color='cyan')
+def load_commits() -> List[str]:
+  raw = shell('git --no-pager log --pretty=format:%s')
+  commits = raw.split('\n')
+  return commits
+
+@yaspin(text='Getting emojis from commits...', color='cyan')
+def get_emojis(
+  commits: List[str],
+  ignore_nonemoji: bool = False,
+  use_emoji_names: bool = False,
+  emoji_map: Optional[List[dict]] = None
+) -> List[str]:
+  emojis = [ c[0] if c[0] in emoji.UNICODE_EMOJI else None for c in commits ]
+  if ignore_nonemoji:
+    emojis = [ e for e in emojis if e is not None ]
+  if use_emoji_names and emoji_map:
+    emojis = [ gitmoji_name(e, emoji_map) for e in emojis ]
+  return emojis
+
+@yaspin(text='Getting the gitmoji emojis map...', color='cyan')
+def get_gitmoji_map() -> List[dict]:
+  return requests.get(
+    'https://raw.githubusercontent.com/carloscuesta/gitmoji/master/src/data/gitmojis.json'
+  ).json()['gitmojis']
+
+@yaspin(text='Aggregating the data...', color='cyan')
+def aggregate(emojis: List[str], others_threshold: int = 5) -> Tuple[List[str], List[int]]:
+  grouped = {}
+  for emoji in emojis:
+    grouped = increment_or_set(grouped, emoji)
+
+  for emoji, count in grouped.items():
+    if count <= others_threshold:
+      grouped = increment_or_set(grouped, emoji, count)
+      grouped[emoji] = None
+
+  grouped = { k:v for k, v in grouped.items() if v is not None }
+  
+  flat = list(grouped.items())
+  sorted_flat = sorted(flat, key=lambda d: d[1])
+  sorted_keys = [ d[0] for d in sorted_flat ]
+  sorted_values = [ d[1] for d in sorted_flat ]
+  return sorted_keys, sorted_values
+
+@yaspin(text='Rendering the plot...', color='cyan')
+def make_plot(labels: List[str], counts: List[int], save_as: str):
+  # Wrap the labels
+  labels = [ textwrap.fill(label, 30) for label in labels ]
+  # Get the  x_pos for each bar
+  x_pos = np.arange(len(labels))
+  # Init plot
+  fig, ax = plt.subplots(figsize=(10, 5))
+  # Set the plot's title
+  plt.title(f"Commit types distribution for {os.path.basename(os.getcwd())}")
+  # Draw the bars
+  plt.barh(x_pos, counts)
+  # Draw the labels
+  plt.yticks(x_pos, labels)
+  # Draw the values & percentages
+  # for i, count in enumerate(counts):
+  #   percentage = round(count/sum(counts) * 100)
+  #   text = f'{count} ({percentage}%)'
+  #   ax.text(max(count - len(text), .5), i - .125, text, color='white')
+  # Ensure that labels are not cut off
+  plt.tight_layout()
+  # Save the file
+  fig.savefig(save_as)
+
+@yaspin(text='Opening the plot...', color='cyan')
+def open_plot(filepath):
+  try:
+    shell(f'explorer.exe "{filepath}"')
+  except CalledProcessError:
+    # Even when the file is opened, explorer.exe returns a non-zero exit code.
+    pass
+
+#
+# Topological sorting. Layer: 3
+#
+
+def gitmoji_name(emoji: str, emoji_map: str) -> str:
+  gitmoji = find(lambda e: e['emoji'] == emoji, emoji_map)
+  if gitmoji is not None:
+    return gitmoji['description']
+  else:
+    return 'N/A'
+
+def increment_or_set(dikt: dict, key: Union[str, int], value: Union[int, float] = 1):
+  """ Sets dikt[key] to value if key not in dikt.keys(), else do dikt[keys] += value
+  """
+
+  if key in dikt.keys():
+    dikt[key] += value
+  else:
+    dikt[key] = value
+  return dikt
+
+@yaspin(text='Loading fonts...', color='cyan')
+def load_fonts():
+  dirs = ['/mnt/c/Windows/Fonts/']
+  files = font_manager.findSystemFonts(fontpaths=dirs)
+  fonts = font_manager.createFontList(files)
+  font_manager.fontManager.ttflist.extend(fonts)
+
+def random_color() -> str:
+  random_hex_chars = [ random.choice('0123456789ABCDEF') for j in range(6) ]
+  return "#" + ''.join(random_hex_chars)
+
+def shell(command, show=False):
+  result = run(command, shell=True, capture_output=not show)
+  result.check_returncode()
+  return result.stdout.decode('utf8')
+
+def find(pred, iterable):
+  for element in iterable:
+    if pred(element):
+      return element
+  return None
+
+#
+# Topological sorting. Layer: 0
+#
+
+if __name__ == "__main__":
+  main()

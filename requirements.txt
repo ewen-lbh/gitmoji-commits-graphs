@@ -1,0 +1,6 @@
+emoji
+PyInquirer
+numpy
+matplotlib
+termcolor
+yaspin
