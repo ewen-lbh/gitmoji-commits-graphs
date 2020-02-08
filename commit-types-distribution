@@ -159,7 +159,10 @@ def open_plot(filepath):
 def gitmoji_name(emoji: str, emoji_map: str) -> str:
   gitmoji = find(lambda e: e['emoji'] == emoji, emoji_map)
   if gitmoji is not None:
-    return gitmoji['description']
+    desc = gitmoji['description']
+    # Remove sentence-ending dot
+    desc = desc[:-1] if desc[len(desc)-1] == '.' else desc
+    return desc
   else:
     return 'N/A'
 
