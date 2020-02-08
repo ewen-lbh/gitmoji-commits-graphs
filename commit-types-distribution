@@ -108,11 +108,11 @@ def get_gitmoji_map() -> List[dict]:
   ).json()['gitmojis']
 
 @yaspin(text='Aggregating the data...', color='cyan')
-def aggregate(emojis: List[str], others_threshold: int = 5) -> Tuple[List[str], List[int]]:
+def aggregate(emojis: List[str]) -> Tuple[List[str], List[int]]:
   grouped = {}
   for emoji in emojis:
     grouped = increment_or_set(grouped, emoji)
-
+  
   for emoji, count in grouped.items():
     if count <= others_threshold:
       grouped = increment_or_set(grouped, emoji, count)
