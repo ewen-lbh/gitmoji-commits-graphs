@@ -67,7 +67,7 @@ def main():
 def parse_args():
   parser = argparse.ArgumentParser(description="""Generate a bar plot showing distribution of commit types.
 Intended for use on repositories following the gitmoji standard.""")
-  parser.add_argument('path', metavar='PATH', type=str, nargs='?', help='The path to the repository to analyze.')
+  parser.add_argument('path', metavar='PATH', type=str, nargs='?', help='The path to the repository to analyze. Default to the current working directory.')
   parser.add_argument('--show-non-gitmoji', '-G', action='store_true', help='Show a "N/A" bar counting commits that don\'t start with an emoji.')
   parser.add_argument('--emoji-labels', '-e', action='store_false', help='Use emojis for labels (Broken right now)')
   parser.add_argument('-o', '--output-file', default='graph.png', metavar='PATH', help='Graph output filepath.')
