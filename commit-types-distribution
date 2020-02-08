@@ -55,7 +55,8 @@ def main():
   )
   labels, counts = aggregate(emojis)
   make_plot(labels, counts, args.output_file)
-  open_plot(args.output_file)
+  if args.open_file:
+    open_plot(args.output_file)
   success(f"Graph saved at {colored(os.path.relpath(args.output_file, cwd), attrs=['bold'])}")
   os.chdir(cwd)
 
@@ -71,6 +72,7 @@ Intended for use on repositories following the gitmoji standard.""")
   parser.add_argument('--show-non-gitmoji', '-G', action='store_true', help='Show a "N/A" bar counting commits that don\'t start with an emoji.')
   parser.add_argument('--emoji-labels', '-e', action='store_false', help='Use emojis for labels (Broken right now)')
   parser.add_argument('-o', '--output-file', default='graph.png', metavar='PATH', help='Graph output filepath.')
+  parser.add_argument('-f', '--open-file', action='store_true', help='Open the file')
   return parser.parse_args()
   
 @yaspin(text='Looking for a git repository...', color='cyan')
