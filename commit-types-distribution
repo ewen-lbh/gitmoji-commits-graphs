@@ -103,7 +103,11 @@ def get_emojis(
   use_emoji_names: bool = False,
   emoji_map: Optional[List[dict]] = None
 ) -> List[str]:
-  emojis = [ c[0] if c[0] in emoji.UNICODE_EMOJI else None for c in commits ]
+  emojis = []
+  for commit in commits:
+    for emoji in emoji_map:
+      if emoji['code'] in commit or emoji['emoji'] in commit:
+        emojis.append(emoji['emoji'])
   if ignore_nonemoji:
     emojis = [ e for e in emojis if e is not None ]
   if use_emoji_names and emoji_map:
